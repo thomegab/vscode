@@ -41,25 +41,25 @@ const argvConfig = configureCommandlineSwitchesSync(args);
 //    `--no-sandbox` or `--disable-chromium-sandbox` argument.
 // 2) argv.json contains `disable-chromium-sandbox: true`.
 if (args['sandbox'] &&
-	!args['disable-chromium-sandbox'] &&
-	!argvConfig['disable-chromium-sandbox']) {
-	app.enableSandbox();
+    !args['disable-chromium-sandbox'] &&
+    !argvConfig['disable-chromium-sandbox']) {
+    app.enableSandbox();
 } else if (app.commandLine.hasSwitch('no-sandbox') &&
-	!app.commandLine.hasSwitch('disable-gpu-sandbox')) {
-	// Disable GPU sandbox whenever --no-sandbox is used.
-	app.commandLine.appendSwitch('disable-gpu-sandbox');
+    !app.commandLine.hasSwitch('disable-gpu-sandbox')) {
+    // Disable GPU sandbox whenever --no-sandbox is used.
+    app.commandLine.appendSwitch('disable-gpu-sandbox');
 } else {
-	app.commandLine.appendSwitch('no-sandbox');
-	app.commandLine.appendSwitch('disable-gpu-sandbox');
+    app.commandLine.appendSwitch('no-sandbox');
+    app.commandLine.appendSwitch('disable-gpu-sandbox');
 }
 
 // Set userData path before app 'ready' event
 const userDataPath = getUserDataPath(args, product.nameShort ?? 'code-oss-dev');
 if (process.platform === 'win32') {
-	const userDataUNCHost = getUNCHost(userDataPath);
-	if (userDataUNCHost) {
-		addUNCHostToAllowlist(userDataUNCHost); // enables to use UNC paths in userDataPath
-	}
+    const userDataUNCHost = getUNCHost(userDataPath);
+    if (userDataUNCHost) {
+        addUNCHostToAllowlist(userDataUNCHost); // enables to use UNC paths in userDataPath
+    }
 }
 app.setPath('userData', userDataPath);
 
@@ -80,7 +80,7 @@ perf.mark('code/willStartCrashReporter');
 //
 // Disable crash reporting in all other cases.
 if (args['crash-reporter-directory'] || (argvConfig['enable-crash-reporter'] && !args['disable-crash-reporter'])) {
-	configureCrashReporter();
+    configureCrashReporter();
 }
 perf.mark('code/didStartCrashReporter');
 
@@ -89,19 +89,19 @@ perf.mark('code/didStartCrashReporter');
 // location outside of the portable directory
 // (https://github.com/microsoft/vscode/issues/56651)
 if (portable && portable.isPortable) {
-	app.setAppLogsPath(path.join(userDataPath, 'logs'));
+    app.setAppLogsPath(path.join(userDataPath, 'logs'));
 }
 
 // Register custom schemes with privileges
 protocol.registerSchemesAsPrivileged([
-	{
-		scheme: 'vscode-webview',
-		privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, allowServiceWorkers: true, }
-	},
-	{
-		scheme: 'vscode-file',
-		privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true }
-	}
+    {
+        scheme: 'vscode-webview',
+        privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, allowServiceWorkers: true, }
+    },
+    {
+        scheme: 'vscode-file',
+        privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true }
+    }
 ]);
 
 // Global app listeners
@@ -127,8 +127,8 @@ const osLocale = processZhLocale(resolved.toLowerCase());
 const metaDataFile = path.join(__dirname, 'nls.metadata.json');
 const locale = getUserDefinedLocale(argvConfig);
 if (locale) {
-	const { getNLSConfiguration } = require('./vs/base/node/languagePacks');
-	nlsConfigurationPromise = getNLSConfiguration(product.commit, userDataPath, metaDataFile, locale, osLocale);
+    const { getNLSConfiguration } = require('./vs/base/node/languagePacks');
+    nlsConfigurationPromise = getNLSConfiguration(product.commit, userDataPath, metaDataFile, locale, osLocale);
 }
 
 // Pass in the locale to Electron so that the
@@ -140,24 +140,24 @@ if (locale) {
 // In that case, use `en` as the Electron locale.
 
 if (process.platform === 'win32' || process.platform === 'linux') {
-	const electronLocale = (!locale || locale === 'qps-ploc') ? 'en' : locale;
-	app.commandLine.appendSwitch('lang', electronLocale);
+    const electronLocale = (!locale || locale === 'qps-ploc') ? 'en' : locale;
+    app.commandLine.appendSwitch('lang', electronLocale);
 }
 
 // Load our code once ready
 app.once('ready', function () {
-	if (args['trace']) {
-		const contentTracing = require('electron').contentTracing;
+    if (args['trace']) {
+        const contentTracing = require('electron').contentTracing;
 
-		const traceOptions = {
-			categoryFilter: args['trace-category-filter'] || '*',
-			traceOptions: args['trace-options'] || 'record-until-full,enable-sampling'
-		};
+        const traceOptions = {
+            categoryFilter: args['trace-category-filter'] || '*',
+            traceOptions: args['trace-options'] || 'record-until-full,enable-sampling'
+        };
 
-		contentTracing.startRecording(traceOptions).finally(() => onReady());
-	} else {
-		onReady();
-	}
+        contentTracing.startRecording(traceOptions).finally(() => handleReady());
+    } else {
+        handleReady();
+    }
 });
 
 /**
@@ -167,514 +167,715 @@ app.once('ready', function () {
  * @param {NLSConfiguration} nlsConfig
  */
 function startup(codeCachePath, nlsConfig) {
-	nlsConfig._languagePackSupport = true;
+    nlsConfig._languagePackSupport = true;
 
-	process.env['VSCODE_NLS_CONFIG'] = JSON.stringify(nlsConfig);
-	process.env['VSCODE_CODE_CACHE_PATH'] = codeCachePath || '';
+    process.env['VSCODE_NLS_CONFIG'] = JSON.stringify(nlsConfig);
+    process.env['VSCODE_CODE_CACHE_PATH'] = codeCachePath || '';
 
-	// Load main in AMD
-	perf.mark('code/willLoadMainBundle');
-	require('./bootstrap-amd').load('vs/code/electron-main/main', () => {
-		perf.mark('code/didLoadMainBundle');
-	});
+    // Load main in AMD
+    perf.mark('code/willLoadMainBundle');
+    require('./bootstrap-amd').load('vs/code/electron-main/main', () => {
+        perf.mark('code/didLoadMainBundle');
+
+        // Set to global so that Electron can access it and enable custom protocol
+        // loading support (used by standalone windows)
+        globalThis.MonacoEnvironment = {};
+
+        globalThis.MonacoEnvironment._id = product.version;
+
+        // @ts-ignore
+        globalThis.MonacoEnvironment._log = (severity, ...args) => {
+            console.log(`[Renderer ${process.pid}]: ${severity}: ${args.join(' ')}`);
+        };
+
+        // Appcelerator/VS Code Extension host
+        if (typeof process.env['VSCODE_AMD_ENTRYPOINT'] === 'string') {
+            const amdEntrypoint = process.env['VSCODE_AMD_ENTRYPOINT'];
+            perf.mark('code/didLoadAMDCode');
+            require(`appcd-node/${amdEntrypoint}`);
+            return;
+        }
+
+        // Startup
+        perf.mark('main/startup');
+        const log = function () { console.log.apply(console, ['[Main Thread]'].concat(Array.prototype.slice.call(arguments))); };
+        // log('start', process.execPath, args);
+
+        // Enable Electron sandbox in the following cases:
+        // 1. There is no ASAR archive to prevent other preloads
+        // 2. The Electron version does not equal the VS Code version (e.g. when running out of sources)
+        if (!process.versions['vscode-electron'] || process.versions['vscode-electron'] !== product.electronVersion) {
+            if (process.argv.indexOf('--no-sandbox') === -1) {
+                if (process.env['ELECTRON_DISABLE_SANDBOX'] !== 'true') {
+                    console.warn(`Could not enable VS Code sandbox because ELECTRON_DISABLE_SANDBOX is not set to 'true'.`);
+                } else {
+                    app.enableSandbox();
+                }
+            }
+        }
+
+        // Load our code
+        require(`./${bootstrap.language}.main`);
+    });
 }
 
-async function onReady() {
-	perf.mark('code/mainAppReady');
+function handleReady() {
+    app.commandLine.appendSwitch('remote-debugging-port', '0');
+    app.commandLine.appendSwitch('background-color', '#1e1e1e');
+    if (args.verbose) {
+        app.commandLine.appendSwitch('enable-logging');
+        app.commandLine.appendArgument('--inspect=' + (args['inspect-extensions'] || '6076'));
+    }
+    // This is the URL passed to the run view and debug view
+    // Trust this for simplicity, errors will be handled by the 'launch' webview.
+    app.commandLine.appendSwitch('vscode-remote');
+    app.commandLine.appendSwitch('vscode-remote-connection-token', args['vscode-remote-connection-token']);
+    app.commandLine.appendSwitch('vscode-remote-connection-localetoken', args['vscode-remote-connection-localetoken']);
+    // Replace Electron's default appender which writes logs to a file.
+    // The new appender uses console.error, which is the correct log level for error messages.
+    // console.error messages show up in the "Shared Process" Electron renderer tab.
+    // console.log messages show up in the "GPU Process" renderer tab, which is not accessible in VS Code.
+    if (args['log-show-logged-messages']) {
+        if (console && console.log) {
+            console.log = (message) => console.error(message);
+        }
+    }
 
-	try {
-		const [, nlsConfig] = await Promise.all([mkdirpIgnoreError(codeCachePath), resolveNlsConfiguration()]);
+    if (args['force-disable-user-env']) {
+        process.env['VSCODE_DISABLE_USER_ENV'] = 'true';
+    }
+    if (args['force-disable-patch']) {
+        process.env['VSCODE_DISABLE_PATCH'] = 'true';
+    }
+    if (args.verbose) {
+        console.log('[remoting-host]: Workspaces manager started with these arguments:', process.argv);
+    }
 
-		startup(codeCachePath, nlsConfig);
-	} catch (error) {
-		console.error(error);
-	}
+    app.whenReady()
+        .then(async () => {
+            // Ensure file system is setup early enough
+            await initializeFileSystem();
+
+            // Require to add `webview.viewtypes` schema contributions
+            // from remote to local for default view types.
+            try {
+                await import('./vs/workbench/services/webview/browser/webviewTypes');
+            } catch (err) {
+                console.error(err);
+            }
+
+            // Parse the common appSettings values
+            const [appSettings] = await bootstrap.resolveCommonProperties();
+            appSettings.commit = product.commit;
+            appSettings.version = product.version;
+            appSettings.nameShort = product.nameShort;
+            appSettings.url = product.url;
+            appSettings.userDataPath = userDataPath;
+
+            // Make sure to persist the telemetryAppender to support any test suite
+            globalThis.telemetryAppender = appSettings.telemetryAppender;
+
+            // Run the main startup logic
+            if (nlsConfigurationPromise) {
+                nlsConfigurationPromise.then(nlsConfig => startup(codeCachePath, nlsConfig));
+            } else {
+                startup(codeCachePath, { locale: 'en', availableLanguages: {} });
+            }
+        });
 }
 
 /**
- * @param {NativeParsedArgs} cliArgs
+ * Initialize file system related things
  */
-function configureCommandlineSwitchesSync(cliArgs) {
-	const SUPPORTED_ELECTRON_SWITCHES = [
-
-		// alias from us for --disable-gpu
-		'disable-hardware-acceleration',
-
-		// override for the color profile to use
-		'force-color-profile'
-	];
-
-	if (process.platform === 'linux') {
-		// Force enable screen readers on Linux via this flag
-		SUPPORTED_ELECTRON_SWITCHES.push('force-renderer-accessibility');
-
-		// override which password-store is used on Linux
-		SUPPORTED_ELECTRON_SWITCHES.push('password-store');
-	}
-
-	const SUPPORTED_MAIN_PROCESS_SWITCHES = [
-
-		// Persistently enable proposed api via argv.json: https://github.com/microsoft/vscode/issues/99775
-		'enable-proposed-api',
-
-		// Log level to use. Default is 'info'. Allowed values are 'error', 'warn', 'info', 'debug', 'trace', 'off'.
-		'log-level',
-
-		// Use an in-memory storage for secrets
-		'use-inmemory-secretstorage'
-	];
-
-	// Read argv config
-	const argvConfig = readArgvConfigSync();
-
-	Object.keys(argvConfig).forEach(argvKey => {
-		const argvValue = argvConfig[argvKey];
-
-		// Append Electron flags to Electron
-		if (SUPPORTED_ELECTRON_SWITCHES.indexOf(argvKey) !== -1) {
-
-			if (
-				// Color profile
-				argvKey === 'force-color-profile' ||
-				// Password store
-				argvKey === 'password-store'
-			) {
-				if (argvValue) {
-					app.commandLine.appendSwitch(argvKey, argvValue);
-				}
-			}
-
-			// Others
-			else if (argvValue === true || argvValue === 'true') {
-				if (argvKey === 'disable-hardware-acceleration') {
-					app.disableHardwareAcceleration(); // needs to be called explicitly
-				} else {
-					app.commandLine.appendSwitch(argvKey);
-				}
-			}
-		}
-
-		// Append main process flags to process.argv
-		else if (SUPPORTED_MAIN_PROCESS_SWITCHES.indexOf(argvKey) !== -1) {
-			switch (argvKey) {
-				case 'enable-proposed-api':
-					if (Array.isArray(argvValue)) {
-						argvValue.forEach(id => id && typeof id === 'string' && process.argv.push('--enable-proposed-api', id));
-					} else {
-						console.error(`Unexpected value for \`enable-proposed-api\` in argv.json. Expected array of extension ids.`);
-					}
-					break;
-
-				case 'log-level':
-					if (typeof argvValue === 'string') {
-						process.argv.push('--log', argvValue);
-					} else if (Array.isArray(argvValue)) {
-						for (const value of argvValue) {
-							process.argv.push('--log', value);
-						}
-					}
-					break;
-
-				case 'use-inmemory-secretstorage':
-					if (argvValue) {
-						process.argv.push('--use-inmemory-secretstorage');
-					}
-					break;
-			}
-		}
-	});
-
-	// Following features are disabled from the runtime:
-	// `CalculateNativeWinOcclusion` - Disable native window occlusion tracker (https://groups.google.com/a/chromium.org/g/embedder-dev/c/ZF3uHHyWLKw/m/VDN2hDXMAAAJ)
-	const featuresToDisable =
-		`CalculateNativeWinOcclusion,${app.commandLine.getSwitchValue('disable-features')}`;
-	app.commandLine.appendSwitch('disable-features', featuresToDisable);
-
-	// Support JS Flags
-	const jsFlags = getJSFlags(cliArgs);
-	if (jsFlags) {
-		app.commandLine.appendSwitch('js-flags', jsFlags);
-	}
-
-	return argvConfig;
-}
-
-function readArgvConfigSync() {
-
-	// Read or create the argv.json config file sync before app('ready')
-	const argvConfigPath = getArgvConfigPath();
-	let argvConfig;
-	try {
-		argvConfig = JSON.parse(stripComments(fs.readFileSync(argvConfigPath).toString()));
-	} catch (error) {
-		if (error && error.code === 'ENOENT') {
-			createDefaultArgvConfigSync(argvConfigPath);
-		} else {
-			console.warn(`Unable to read argv.json configuration file in ${argvConfigPath}, falling back to defaults (${error})`);
-		}
-	}
-
-	// Fallback to default
-	if (!argvConfig) {
-		argvConfig = {};
-	}
-
-	return argvConfig;
+async function initializeFileSystem() {
+    // 1. Ensure storage path exists
+    if (!fs.existsSync(path.dirname(userDataPath))) {
+        try {
+            await fs.promises.mkdir(path.dirname(userDataPath), { recursive: true });
+        } catch (error) {
+            console.error(`mkdir "${path.dirname(userDataPath)}" failed: ${error.toString()}`);
+        }
+    }
 }
 
 /**
- * @param {string} argvConfigPath
- */
-function createDefaultArgvConfigSync(argvConfigPath) {
-	try {
-
-		// Ensure argv config parent exists
-		const argvConfigPathDirname = path.dirname(argvConfigPath);
-		if (!fs.existsSync(argvConfigPathDirname)) {
-			fs.mkdirSync(argvConfigPathDirname);
-		}
-
-		// Default argv content
-		const defaultArgvConfigContent = [
-			'// This configuration file allows you to pass permanent command line arguments to VS Code.',
-			'// Only a subset of arguments is currently supported to reduce the likelihood of breaking',
-			'// the installation.',
-			'//',
-			'// PLEASE DO NOT CHANGE WITHOUT UNDERSTANDING THE IMPACT',
-			'//',
-			'// NOTE: Changing this file requires a restart of VS Code.',
-			'{',
-			'	// Use software rendering instead of hardware accelerated rendering.',
-			'	// This can help in cases where you see rendering issues in VS Code.',
-			'	// "disable-hardware-acceleration": true',
-			'}'
-		];
-
-		// Create initial argv.json with default content
-		fs.writeFileSync(argvConfigPath, defaultArgvConfigContent.join('\n'));
-	} catch (error) {
-		console.error(`Unable to create argv.json configuration file in ${argvConfigPath}, falling back to defaults (${error})`);
-	}
-}
-
-function getArgvConfigPath() {
-	const vscodePortable = process.env['VSCODE_PORTABLE'];
-	if (vscodePortable) {
-		return path.join(vscodePortable, 'argv.json');
-	}
-
-	let dataFolderName = product.dataFolderName;
-	if (process.env['VSCODE_DEV']) {
-		dataFolderName = `${dataFolderName}-dev`;
-	}
-
-	// @ts-ignore
-	return path.join(os.homedir(), dataFolderName, 'argv.json');
-}
-
-function configureCrashReporter() {
-
-	let crashReporterDirectory = args['crash-reporter-directory'];
-	let submitURL = '';
-	if (crashReporterDirectory) {
-		crashReporterDirectory = path.normalize(crashReporterDirectory);
-
-		if (!path.isAbsolute(crashReporterDirectory)) {
-			console.error(`The path '${crashReporterDirectory}' specified for --crash-reporter-directory must be absolute.`);
-			app.exit(1);
-		}
-
-		if (!fs.existsSync(crashReporterDirectory)) {
-			try {
-				fs.mkdirSync(crashReporterDirectory, { recursive: true });
-			} catch (error) {
-				console.error(`The path '${crashReporterDirectory}' specified for --crash-reporter-directory does not seem to exist or cannot be created.`);
-				app.exit(1);
-			}
-		}
-
-		// Crashes are stored in the crashDumps directory by default, so we
-		// need to change that directory to the provided one
-		console.log(`Found --crash-reporter-directory argument. Setting crashDumps directory to be '${crashReporterDirectory}'`);
-		app.setPath('crashDumps', crashReporterDirectory);
-	}
-
-	// Otherwise we configure the crash reporter from product.json
-	else {
-		const appCenter = product.appCenter;
-		if (appCenter) {
-			const isWindows = (process.platform === 'win32');
-			const isLinux = (process.platform === 'linux');
-			const isDarwin = (process.platform === 'darwin');
-			const crashReporterId = argvConfig['crash-reporter-id'];
-			const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-			if (uuidPattern.test(crashReporterId)) {
-				if (isWindows) {
-					switch (process.arch) {
-						case 'x64':
-							submitURL = appCenter['win32-x64'];
-							break;
-						case 'arm64':
-							submitURL = appCenter['win32-arm64'];
-							break;
-					}
-				} else if (isDarwin) {
-					if (product.darwinUniversalAssetId) {
-						submitURL = appCenter['darwin-universal'];
-					} else {
-						switch (process.arch) {
-							case 'x64':
-								submitURL = appCenter['darwin'];
-								break;
-							case 'arm64':
-								submitURL = appCenter['darwin-arm64'];
-								break;
-						}
-					}
-				} else if (isLinux) {
-					submitURL = appCenter['linux-x64'];
-				}
-				submitURL = submitURL.concat('&uid=', crashReporterId, '&iid=', crashReporterId, '&sid=', crashReporterId);
-				// Send the id for child node process that are explicitly starting crash reporter.
-				// For vscode this is ExtensionHost process currently.
-				const argv = process.argv;
-				const endOfArgsMarkerIndex = argv.indexOf('--');
-				if (endOfArgsMarkerIndex === -1) {
-					argv.push('--crash-reporter-id', crashReporterId);
-				} else {
-					// if the we have an argument "--" (end of argument marker)
-					// we cannot add arguments at the end. rather, we add
-					// arguments before the "--" marker.
-					argv.splice(endOfArgsMarkerIndex, 0, '--crash-reporter-id', crashReporterId);
-				}
-			}
-		}
-	}
-
-	// Start crash reporter for all processes
-	const productName = (product.crashReporter ? product.crashReporter.productName : undefined) || product.nameShort;
-	const companyName = (product.crashReporter ? product.crashReporter.companyName : undefined) || 'Microsoft';
-	const uploadToServer = Boolean(!process.env['VSCODE_DEV'] && submitURL && !crashReporterDirectory);
-	crashReporter.start({
-		companyName,
-		productName: process.env['VSCODE_DEV'] ? `${productName} Dev` : productName,
-		submitURL,
-		uploadToServer,
-		compress: true
-	});
-}
-
-/**
- * @param {NativeParsedArgs} cliArgs
- * @returns {string | null}
- */
-function getJSFlags(cliArgs) {
-	const jsFlags = [];
-
-	// Add any existing JS flags we already got from the command line
-	if (cliArgs['js-flags']) {
-		jsFlags.push(cliArgs['js-flags']);
-	}
-
-	return jsFlags.length > 0 ? jsFlags.join(' ') : null;
-}
-
-/**
- * @returns {NativeParsedArgs}
+ * Parses command-line arguments and sets the 'userData' path
+ * and 'diskCache' to be used.
+ *
+ * We do this as early as possible, because they are used in
+ * various parts of the startup, including log level
+ * determination.
  */
 function parseCLIArgs() {
-	const minimist = require('minimist');
+    const args = stripComments(process.argv);
+    const argsConfig = {
+        'help': Boolean,
+        'version': Boolean,
+        'wait': Boolean,
+        'waitMarkerFilePath': String,
+        'diff': Boolean,
+        'add': String,
+        'goto': String,
+        'new-window': Boolean,
+        'unity-launch': Boolean,
+        'file-write': Boolean,
+        'file-chmod': Boolean,
+        'file-delete': Boolean,
+        'user-data-dir': String,
+        'locale': String,
+        'js-flags': String,
+        'install-source': String,
+        'max-memory': String,
+        'driver-verbose': String,
+        'force': Boolean,
+        'verbose': Boolean,
+        'prof-startup': Boolean,
+        'disable-gpu': Boolean,
+        'disable-particles': Boolean,
+        'log': String,
+        'logFile': String,
+        'status': Boolean,
+        'no-lazy': Boolean,
+        'logExtensionHostCommunication': String,
+        'trace': Boolean,
+        'trace-category-filter': String,
+        'trace-options': String,
+        'background-color': String,
+        'skip-release-notes': Boolean,
+        'url': String,
+        'open-url': String,
+        'list-extensions': Boolean,
+        'show-versions': Boolean,
+        'prof-extensions': String,
+        'inspect-extensions': String,
+        'inspect-brk-extensions': String,
+        'version-suffix': String,
+        'native-exit': Boolean,
+        'shutdown': Boolean,
+        'add:': String,
+        'goto:': String,
+        'file-write:': String,
+        'file-chmod:': String,
+        'file-delete:': String,
+        'telemetryLog': String,
+        'force-disable-user-env': Boolean,
+        'force-disable-patch': Boolean,
+        'disable-crash-reporter': Boolean,
+        'crash-reporter-directory': String,
+        'remote': String,
+        'locale:': String
+    };
 
-	return minimist(process.argv, {
-		string: [
-			'user-data-dir',
-			'locale',
-			'js-flags',
-			'crash-reporter-directory'
-		],
-		boolean: [
-			'disable-chromium-sandbox',
-		],
-		default: {
-			'sandbox': true
-		},
-		alias: {
-			'no-sandbox': 'sandbox'
-		}
-	});
+    const result = minimist(args, argsConfig);
+
+    if (result['prof-startup']) {
+        return result;
+    }
+
+    const options = result['add'] || result['add:'];
+    if (typeof options === 'string') {
+        result['add'] = [options];
+    }
+    const files = result['file-write'] || result['file-write:'];
+    if (typeof files === 'string') {
+        result['file-write'] = [files];
+    }
+    const filesChmod = result['file-chmod'] || result['file-chmod:'];
+    if (typeof filesChmod === 'string') {
+        result['file-chmod'] = [filesChmod];
+    }
+    const filesDelete = result['file-delete'] || result['file-delete:'];
+    if (typeof filesDelete === 'string') {
+        result['file-delete'] = [filesDelete];
+    }
+    const locales = result['locale'] || result['locale:'];
+    if (typeof locales === 'string') {
+        result['locale'] = [locales];
+    }
+    if (result['locale']) {
+        if (!result['locale'][0]) {
+            result['locale'] = [];
+        } else {
+            result['locale'] = [result['locale'][0]];
+        }
+    }
+
+    if (result['user-data-dir']) {
+        // we don't care if it exists, because the app should guarantee its
+        // validity when used
+        userDataPath = path.normalize(result['user-data-dir']);
+    }
+
+    if (result['disable-gpu']) {
+        app.disableHardwareAcceleration();
+    }
+
+    // patch env based on args
+    if (result['js-flags']) {
+        process.env['ELECTRON_V8_ARGS'] = result['js-flags'];
+    }
+
+    if (result['file-write'] || result['file-chmod'] || result['file-delete']) {
+        result['file-write'] = result['file-write'] || [];
+        result['file-chmod'] = result['file-chmod'] || [];
+        result['file-delete'] = result['file-delete'] || [];
+        process.env['VSCODE_FILES_TO_WRITE'] = (result['file-write'].join(os.EOL) || '') + os.EOL +
+            (result['file-chmod'].join(os.EOL) || '') + os.EOL +
+            (result['file-delete'].join(os.EOL) || '');
+    }
+
+    if (result['locale']) {
+        process.env['VSCODE_NLS_CONFIG'] = JSON.stringify({ locale: result['locale'][0], availableLanguages: {} });
+    }
+
+    // make sure we handle uncaught exceptions
+    if (!result['prof-startup'] || result['disable-crash-reporter']) {
+        const electronOpts = process.electronEnv || {};
+        const errors = electronOpts['errors'] ? electronOpts['errors'] : {};
+        errors['uncaughtException'] = !result['prof-startup'];
+        electronOpts['errors'] = errors;
+        process.electronEnv = electronOpts;
+    }
+
+    return result;
+}
+
+function getCodeCachePath() {
+    if (isBuiltElectron) {
+        const parts = app.getAppPath().split(/[\/\\]/);
+        while (parts.length > 0) {
+            if (parts.pop() === 'Electron.app') {
+                return path.join(...parts);
+            }
+        }
+    }
+
+    return app.getAppPath();
+}
+
+function getUserDefinedLocale(argsConfig) {
+    // The app supports specifying the user-defined UI locale in the command-line.
+    // Use it if specified.
+    if (argsConfig['locale']) {
+        const cliDefinedLocale = argsConfig['locale'];
+        if (cliDefinedLocale) {
+            return processZhLocale(cliDefinedLocale);
+        }
+    }
+
+    // Else, use the OS locale
+    return osLocale;
+}
+
+/**
+ * Support for detecting the zh-CN locale based on the region.
+ *
+ * @param osLocale
+ */
+function processZhLocale(osLocale) {
+    if (osLocale === 'zh-cn') {
+        return 'zh-CN'; // no change for zh-cn
+    }
+
+    if (osLocale === 'zh-tw' || osLocale === 'zh-hk') {
+        return 'zh-TW'; // no change for zh-tw or zh-hk
+    }
+
+    // At this point, we found an OS locale that is neither zh-CN, nor zh-TW or zh-HK.
+    // For all other locales, we default to zh-CN. The assumption is that
+    // it's simpler to teach Chinese users how to switch to a different Chinese locale
+    // than users from other regions to Chinese.
+    return 'zh-CN';
+}
+
+/**
+ * @param {NativeParsedArgs} args
+ */
+function configureCommandlineSwitchesSync(args) {
+    const result = process.argv.slice(1);
+
+    // fix for __filename when it is an url
+    if (process.platform === 'win32') {
+        const index = result.findIndex(value => /^-[-a-zA-Z]*$/.test(value));
+        if (index > 0) {
+            const possiblePath = result[index - 1];
+            if (path.extname(possiblePath) === '.exe' || !path.extname(possiblePath)) {
+                result[index - 1] = process.execPath;
+            }
+        }
+    }
+
+    let n = result.indexOf('--driver-verbose');
+    if (n >= 0 && n < result.length - 1) {
+        if (result[n + 1].startsWith('--')) {
+            result.splice(n, 1); // --driver-verbose was used without a value, so we remove it
+        }
+    }
+    n = result.indexOf('--log');
+    if (n >= 0 && n < result.length - 1) {
+        if (result[n + 1].startsWith('--')) {
+            result.splice(n, 2); // --log was used without a value, so we remove it and its value
+        }
+    }
+
+    // Find and upgrade --extensionHomePath to --extensions-dir
+    n = result.indexOf('--extensionHomePath');
+    if (n >= 0 && n < result.length - 1) {
+        result[n] = '--extensions-dir';
+    }
+
+    const x = result.indexOf('--vscode-remote');
+    if (x >= 0 && x < result.length - 1) {
+        result[x + 1] = result[x + 1].replace(/'/g, '');
+        result[x + 1] = result[x + 1].replace(/"/g, '');
+    }
+
+    // Rewrite all file paths to use the __filename of `bootstrap.js`
+    const bootJsFile = app.getAppPath();
+
+    // Add the script arguments
+    result.push('--bootstrapper', bootJsFile);
+
+    // Enable ASAR support
+    bootstrap.enableASARSupport();
+
+    if (args.verbose) {
+        result.push('--verbose');
+    }
+
+    result.push('--vscode-remote');
+    result.push(args['vscode-remote']);
+
+    return minimist(result, { string: ['bootstrapper', 'extensions-dir', 'vscode-remote', 'telemetryLog', 'file-chmod', 'file-write', 'file-delete'] });
+}
+
+/**
+ * Store the NLS config as early as possible.
+ */
+function setNLSConfig() {
+    if (nlsConfigurationPromise) {
+        nlsConfigurationPromise.then(nlsConfig => {
+            process.env['VSCODE_NLS_CONFIG'] = JSON.stringify(nlsConfig);
+        });
+    }
 }
 
 function registerListeners() {
+    app.on('will-finish-launching', () => {
+        app.on('open-file', (event, path) => {
+            // Paths in args are already normalized
+            path = fs.existsSync(path) ? path : undefined;
 
-	/**
-	 * macOS: when someone drops a file to the not-yet running VSCode, the open-file event fires even before
-	 * the app-ready event. We listen very early for open-file and remember this upon startup as path to open.
-	 *
-	 * @type {string[]}
-	 */
-	const macOpenFiles = [];
-	global['macOpenFiles'] = macOpenFiles;
-	app.on('open-file', function (event, path) {
-		macOpenFiles.push(path);
-	});
+            if (!path) {
+                return;
+            }
 
-	/**
-	 * macOS: react to open-url requests.
-	 *
-	 * @type {string[]}
-	 */
-	const openUrls = [];
-	const onOpenUrl =
-		/**
-		 * @param {{ preventDefault: () => void; }} event
-		 * @param {string} url
-		 */
-		function (event, url) {
-			event.preventDefault();
+            bootstrap.log('App#open-file', path);
+            globalThis.sendBootLoadWindowOrInstance({
+                type: 'open-file',
+                path
+            });
+        });
+        app.on('open-url', (event, url) => {
+            bootstrap.log('App#open-url', url);
+            globalThis.sendBootLoadWindowOrInstance({
+                type: 'open-url',
+                url
+            });
+        });
+    });
 
-			openUrls.push(url);
-		};
+    app.on('ready', () => {
+        app.on('activate', (event, hasVisibleWindows, openFile, urls, userInitiated) => {
+            if (hasVisibleWindows || !globalThis.sendBootLoadWindowOrInstance) {
+                return;
+            }
 
-	app.on('will-finish-launching', function () {
-		app.on('open-url', onOpenUrl);
-	});
+            bootstrap.log('App#activate', openFile, userInitiated);
+            if (openFile) {
+                globalThis.sendBootLoadWindowOrInstance({
+                    type: 'open-file',
+                    path: openFile
+                });
+            } else if (urls) {
+                globalThis.sendBootLoadWindowOrInstance({
+                    type: 'open-url',
+                    url: urls[0]
+                });
+            } else {
+                globalThis.sendBootLoadWindowOrInstance({
+                    type: 'activate'
+                });
+            }
+        });
 
-	global['getOpenUrls'] = function () {
-		app.removeListener('open-url', onOpenUrl);
+        if (!process.env['VSCODE_DEV']) {
+            // whenver not running out of sources, pass telemetry & crash reporter args
+            const config = configureServiceTelemetryAndCrashReporter();
 
-		return openUrls;
-	};
+            const windowConfig = {
+                forceWindow: !config['force-renderer-accessibility'], // TODO@bpasero remove that once screen reader support has adequately been tested
+            };
+
+            bootstrap.log('App#configureService', config);
+            globalThis.configureService(config, windowConfig);
+        }
+
+        // create screens array with each screen size info
+        let screens;
+        if (electron.screen) {
+            screens = electron.screen.getAllDisplays();
+        } else {
+            screens = [electron.remote.getCurrentWindow().getBounds()];
+        }
+
+        if (process.env['VSCODE_HANDLES_UNCAUGHT_ERRORS']) {
+            process.on('uncaughtException', function (error) {
+                console.error('[uncaught exception in main]: ' + error);
+                if (error.stack) {
+                    console.error(error.stack);
+                }
+            });
+        }
+
+        // return the screens in `data`
+        globalThis.sendBootLoadWindowOrInstance({ screens: screens, initialStartup: true });
+    });
+
+    app.on('window-all-closed', function () {
+        // Mac only
+        if (process.platform === 'darwin') {
+            return;
+        }
+
+        app.quit();
+    });
+}
+
+function configureCrashReporter() {
+    const env = { ...process.env };
+
+    // If crash reporting is not disabled we handle uncaught exceptions and forward to the crash reporter.
+    // The crash reporter will not report when running out of sources because there are no external crash reports to forward to.
+    if (!process.env['VSCODE_DISABLE_CRASH_REPORTER'] && !isBuiltElectron) {
+        const CrashReporter = require('vs/base/parts/sandbox/electron-sandbox/crashReporter');
+
+        if (!env['VSCODE_PIPE_LOGS'] && (isLinux || isMacintosh || isWindows)) {
+            env['ELECTRON_ENABLE_LOGGING'] = '1';
+        }
+
+        if (!env['VSCODE_HANDLES_UNCAUGHT_ERRORS']) {
+            process.on('uncaughtException', (error) => {
+                console.error('[uncaught exception in main]: ' + error);
+
+                if (error.stack) {
+                    console.error(error.stack);
+                }
+            });
+        }
+
+        // handle unhandled promises rejections
+        process.on('unhandledRejection', (reason) => {
+            console.error('[unhandled promise rejection in main]: ' + reason);
+        });
+
+        // startup crash reporter as first thing
+        CrashReporter.startup({
+            productName: product.nameLong,
+            companyName: 'Microsoft Corporation',
+            submitURL: 'https://rink.hockeyapp.net/api/2/apps/' + product.hockeyAppId + '/crashes/upload',
+            extra: { version: app.getVersion(), commit: product.commit, vs: isWindows ? '1' : process.versions['vscode-api'] }
+        }, env);
+    }
 }
 
 /**
- * @returns {string | undefined} the location to use for the code cache
- * or `undefined` if disabled.
+ * Log diagnosic data.
  */
-function getCodeCachePath() {
+function logDiagnostics() {
+    if (args.verbose) {
+        console.log(`VERBOSE: current build ${product.commit || '0000000'}, global app data: ${app.getPath('appData')}`);
+        console.log(`VERBOSE: argv {`);
+        for (let i = 0; i < process.argv.length; i++) {
+            console.log(`  ${i}: ${process.argv[i]}`);
+        }
+        console.log(`}`);
+    }
 
-	// explicitly disabled via CLI args
-	if (process.argv.indexOf('--no-cached-data') > 0) {
-		return undefined;
-	}
+    const now = Date.now();
+    if (typeof globalThis['VSCODE_LOG_BENCHMARK'] !== 'undefined') {
+        globalThis['VSCODE_LOG_BENCHMARK'](now, 'electron start');
+    }
 
-	// running out of sources
-	if (process.env['VSCODE_DEV']) {
-		return undefined;
-	}
+    if (args.log || args.logFile) {
+        console.log(`STARTUP with logs: (${process.pid})`);
 
-	// require commit id
-	const commit = product.commit;
-	if (!commit) {
-		return undefined;
-	}
+        const consoleLogger = new bootstrap.ElectronLogService(product.commit, product.version, process.stdout, process.stderr);
+        consoleLogger.setLevel(bootstrap.LogLevel.Info);
 
-	return path.join(userDataPath, 'CachedData', commit);
+        if (args.logFile) {
+            consoleLogger.logger.addLogOutput(bootstrap.createLogFileLogger(args.logFile, bootstrap.getLogLevel(args), fs));
+        }
+
+        if (args.log) {
+            consoleLogger.logger.addLogOutput(bootstrap.createRotatingLogFileLogger(args.log, bootstrap.getLogLevel(args), fs));
+        }
+
+        consoleLogger.info(`Startup: ---`);
+        consoleLogger.info(`Startup: pid: ${process.pid}`);
+        consoleLogger.info(`Startup: executable: ${app.getPath('exe')}`);
+        consoleLogger.info(`Startup: appRoot: ${app.getAppPath()}`);
+        consoleLogger.info(`Startup: commit: ${product.commit}`);
+        consoleLogger.info(`Startup: version: ${product.version}`);
+        consoleLogger.info(`Startup: arch: ${os.arch()}`);
+        consoleLogger.info(`Startup: platform: ${process.platform}`);
+        consoleLogger.info(`Startup: usingPureWebSockets: ${!args['force-ipc']}`);
+        consoleLogger.info(`Startup: localRender: ${args['local-render']}`);
+        consoleLogger.info(`Startup: remote: ${args['vscode-remote'] || ''}`);
+        consoleLogger.info(`Startup: size: ${process.getProcessMemoryInfo().private / 1024} MB`);
+        consoleLogger.info(`Startup: arguments: ${process.argv.slice(1).join(' ')}`);
+        consoleLogger.info(`Startup: node lib: ${bootstrap.getCLILibPath()}`);
+        consoleLogger.info(`Startup: ---`);
+
+        consoleLogger.info(`Startup: currentDir=${process.cwd}`);
+        consoleLogger.info(`Startup: gpuStartup=${app.commandLine.hasSwitch('gpu-startup')}`);
+        consoleLogger.info(`Startup: noSplash=${app.commandLine.hasSwitch('no-sandbox')}`);
+        consoleLogger.info(`Startup: inspect port=${app.commandLine.getSwitchValue('inspect-extensions')}`);
+        consoleLogger.info(`Startup: logs: ${args.log} ${args.logFile}`);
+
+        const extPath = args['extensions-dir'] || '';
+
+        consoleLogger.info(`Startup: cwd=${process.cwd()}, ${app.getAppPath()}, ${extPath}`);
+
+        if (isWindows) {
+            const configFile = process.env['VSCODE_CWD'] || path.join(app.getPath('appData'), product.applicationName, 'args.txt');
+            try {
+                const args = fs.readFileSync(configFile, 'utf8');
+                consoleLogger.info(`Startup: argsfile: ${configFile} => ${args}`);
+            } catch (err) {
+                consoleLogger.info(`Startup: no args file: ${configFile}`);
+            }
+        }
+
+        if (args.verbose) {
+            process.env['ELECTRON_ENABLE_LOGGING'] = '1';
+        }
+    }
 }
 
-/**
- * @param {string} dir
- * @returns {Promise<string>}
- */
-function mkdirp(dir) {
-	return new Promise((resolve, reject) => {
-		fs.mkdir(dir, { recursive: true }, err => (err && err.code !== 'EEXIST') ? reject(err) : resolve(dir));
-	});
+function isBuiltElectron() {
+    const electronVersion = process.versions['electron'];
+    return /^[0-9]+\.[0-9]+\.[0-9]+/.test(electronVersion);
 }
 
-/**
- * @param {string | undefined} dir
- * @returns {Promise<string | undefined>}
- */
-async function mkdirpIgnoreError(dir) {
-	if (typeof dir === 'string') {
-		try {
-			await mkdirp(dir);
+function configureServiceTelemetryAndCrashReporter() {
+    const config = {
+        ...args,
+        ...product.diagnostics
+    };
 
-			return dir;
-		} catch (error) {
-			// ignore
-		}
-	}
+    // Add process context information to telemetry config
+    config.machineId = globalThis.instanceMachineId;
+    config.machineName = globalThis.instanceMachineName;
+    config.msi = globalThis.instanceMachineInfo;
 
-	return undefined;
+    // Give back configuration
+    return config;
 }
 
-//#region NLS Support
+function configureIpc() {
+    const ignoredIpcChannels = [
+        'v8-compile-cache'
+    ];
 
-/**
- * @param {string} appLocale
- * @returns string
- */
-function processZhLocale(appLocale) {
-	if (appLocale.startsWith('zh')) {
-		const region = appLocale.split('-')[1];
-		// On Windows and macOS, Chinese languages returned by
-		// app.getPreferredSystemLanguages() start with zh-hans
-		// for Simplified Chinese or zh-hant for Traditional Chinese,
-		// so we can easily determine whether to use Simplified or Traditional.
-		// However, on Linux, Chinese languages returned by that same API
-		// are of the form zh-XY, where XY is a country code.
-		// For China (CN), Singapore (SG), and Malaysia (MY)
-		// country codes, assume they use Simplified Chinese.
-		// For other cases, assume they use Traditional.
-		if (['hans', 'cn', 'sg', 'my'].includes(region)) {
-			return 'zh-cn';
-		}
-		return 'zh-tw';
-	}
-	return appLocale;
+    function canIpc(explicitlyAllowed) {
+        if (explicitlyAllowed) {
+            return true;
+        }
+
+        return ignoredIpcChannels.indexOf(ipcEvent.channel) !== -1;
+    }
+
+    const ipcMain = new bootstrap.ElectronIPCMain(canIpc);
+    ipcMain.registerChannel('vscode:exit', (event, reply) => {
+        app.quit();
+        reply(undefined);
+    });
+
+    ipcMain.registerChannel('vscode:fetchShellEnv', async (event, reply) => {
+        reply(await bootstrap.fetchShellEnv());
+    });
+    ipcMain.registerChannel('vscode:toggleSharedProcess', async (event, reply, enabled) => {
+        reply(await bootstrap.toggleSharedProcess(enabled));
+    });
+    ipcMain.registerChannel('vscode:telemetry', async (event, reply, data) => {
+        bootstrap.sendTelemetry(data.event, data.data);
+        reply(true);
+    });
+    ipcMain.registerChannel('vscode:telemetryV3', async (event, reply, data) => {
+        bootstrap.sendTelemetry(data.event, data.data);
+        reply(true);
+    });
+    ipcMain.registerChannel('vscode:reportError', async (event, reply, data) => {
+        if (data.error) {
+            bootstrap.log(data.error.toString());
+        }
+        if (data.error) {
+            bootstrap.log(data.error.stack);
+        }
+        if (data.error) {
+            console.error(data.error.toString());
+        }
+        if (data.error) {
+            console.error(data.error.stack);
+        }
+        reply(true);
+    });
+    ipcMain.registerChannel('vscode:ping', async (event, reply) => {
+        reply(true);
+    });
+
+    bootstrap.registerIpcMain(ipcMain);
+
+    return ipcMain;
 }
 
-/**
- * Resolve the NLS configuration
- *
- * @return {Promise<NLSConfiguration>}
- */
-async function resolveNlsConfiguration() {
+function handleStartupData(): void {
+    if (process.env['VSCODE_PIPE_LOGS']) {
+        process.env['VSCODE_LOG_STACK'] = 'false'; // since we write log output to the console
+        const logFile = app.getPath('userData') + '/main.log';
+        try {
+            bootstrap.enableLog(logFile, logFile, false);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    logDiagnostics();
 
-	// First, we need to test a user defined locale. If it fails we try the app locale.
-	// If that fails we fall back to English.
-	let nlsConfiguration = nlsConfigurationPromise ? await nlsConfigurationPromise : undefined;
-	if (nlsConfiguration) {
-		return nlsConfiguration;
-	}
+    setNLSConfig();
+    bootstrap.registerListeners();
+    registerListeners();
+    bootstrap.patchExecEnvironment();
 
-	// Try to use the app locale. Please note that the app locale is only
-	// valid after we have received the app ready event. This is why the
-	// code is here.
+    if (args.verbose) {
+        console.log('VSCode main -> getBootConfig');
+    }
+    globalThis.getBootConfig().then(async ([name, config, logsPath]) => {
+        if (args.verbose) {
+            console.log('VSCode main -> got boot config');
+        }
 
-	/**
-	 * @type string
-	 */
-	let appLocale = app.getLocale();
-	if (!appLocale) {
-		return { locale: 'en', osLocale, availableLanguages: {} };
-	}
-
-	// See above the comment about the loader and case sensitiveness
-	appLocale = processZhLocale(appLocale.toLowerCase());
-
-	const { getNLSConfiguration } = require('./vs/base/node/languagePacks');
-	nlsConfiguration = await getNLSConfiguration(product.commit, userDataPath, metaDataFile, appLocale, osLocale);
-	return nlsConfiguration ?? { locale: 'en', osLocale, availableLanguages: {} };
+        // Emit Event when the store fails to load
+        config.storeService.onError(e => console.error('StoreService#load fails', e));
+        // Load services
+        await bootstrap.loadServices(name, config);
+        // Log Telemetry
+        bootstrap.sendTelemetry('mainStarted', { ...await bootstrap.resolveCommonProperties(), config });
+        // Load bootstrap main file
+        await bootstrap.loadBootstrapMain(name, config, logsPath);
+        // Load main
+        import('./bootstrap-main');
+    }).catch(console.error);
 }
 
-/**
- * Language tags are case insensitive however an amd loader is case sensitive
- * To make this work on case preserving & insensitive FS we do the following:
- * the language bundles have lower case language tags and we always lower case
- * the locale we receive from the user or OS.
- *
- * @param {{ locale: string | undefined; }} argvConfig
- * @returns {string | undefined}
- */
-function getUserDefinedLocale(argvConfig) {
-	const locale = args['locale'];
-	if (locale) {
-		return locale.toLowerCase(); // a directly provided --locale always wins
-	}
-
-	return argvConfig.locale && typeof argvConfig.locale === 'string' ? argvConfig.locale.toLowerCase() : undefined;
-}
-
-//#endregion
+handleStartupData();
